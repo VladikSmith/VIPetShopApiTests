@@ -1,5 +1,8 @@
 import allure
+import jsonschema
 import requests
+from .schemas.pet_schema import PET_SCHEMA
+from .schemas.pet_schema import PET_SCHEMA_WITH_FULL_DATA
 
 BASE_URL = 'http://5.181.109.28:9090/api/v3'
 
@@ -39,3 +42,50 @@ class TestPet:
 
         with allure.step('Проверка статуса ответа'):
             assert response.status_code == 404, 'Код ответа не совпал с ожидаемым'
+
+    @allure.title('Добавление нового питомца')
+    def test_add_pet(self):
+        with allure.step('Подготовка данных для создания питомца'):
+            payload = {
+                "id": 1,
+                "name": "Buddy",
+                "status": "available"
+            }
+            response = requests.post(f'{BASE_URL}/pet', json=payload)
+            response_json = response.json()
+
+        with allure.step('Проверка статуса ответа и валидация JSON-схемы'):
+            assert response.status_code == 200, 'Код ответа не совпал с ожидаемым'
+            jsonschema.validate(response_json, PET_SCHEMA)
+
+        with allure.step('Проверка параметров питомца в ответе'):
+            assert response_json['id'] == payload['id'], 'id питомца не совпадает с ожидаемым'
+            assert response_json['name'] == payload['name'], 'имя питомца не совпадает с ожидаемым'
+            assert response_json['status'] == payload['status'], 'статус питомца не совпадает с ожидаемым'
+
+    @allure.title('Добавление нового питомца с полными данными')
+    def test_add_pet_with_full_data(self):
+        with allure.step('Подготовка данных для создания питомца с полными данными'):
+            payload = {
+                 "id": 10,
+                 "name": "doggie",
+                 "category": {"id": 1, "name": "Dogs"},
+                 "photoUrls": ["string"],
+                 "tags": [{"id": 0, "name": "string"}],
+                 "status": "available"
+            }
+            response = requests.post(f'{BASE_URL}/pet', json=payload)
+            response_json = response.json()
+
+        with allure.step('Проверка статуса ответа и валидация JSON-схемы'):
+            assert response.status_code == 200, 'Код ответа не совпал с ожидаемым'
+            jsonschema.validate(response.json(), PET_SCHEMA_WITH_FULL_DATA)
+
+        with allure.step('Проверка всех параметров питомца в ответе'):
+            assert response_json['id'] == payload['id'], 'id питомца не совпадает с ожидаемым'
+            assert response_json['name'] == payload['name'], 'имя питомца не совпадает с ожидаемым'
+            assert response_json['category'] == payload['category'], 'категория питомца не совпадает с ожидаемым'
+            assert response_json['photoUrls'] == payload['photoUrls'], 'photoUrls питомца не совпадает с ожидаемым'
+            assert response_json['tags'] == payload['tags'], 'тэги питомца не совпадают с ожидаемыми'
+            assert response_json['status'] == payload['status'], 'статус питомца не совпадает с ожидаемым'
+
